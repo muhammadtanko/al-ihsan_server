@@ -1,0 +1,237 @@
+{
+  "title": "KADCHMA Professional Fees/Tariffs for investigations and procedures",
+  "tariff_review": {
+    "effective_date": "November 2025",
+    "document_title": "Approved Tariff Review (Effective Nov. 2025)",
+    "adjustment": {
+      "surgical_services": "100% increase",
+      "diagnostic_and_laboratory_services": "75%–100% increase"
+    }
+  },
+  "price_columns": {
+    "baseline": "Baseline",
+    "approved": "KADCHMA Approved"
+  },
+  "categories": [
+    {
+      "name": "General Description",
+      "items": [
+        {
+          "service": "Specialist Initial Consultation",
+          "baseline": 2000,
+          "approved": 3500
+        },
+        {
+          "service": "Specialist Review (Per visit)",
+          "baseline": 1000,
+          "approved": 1750
+        },
+        {
+          "service": "Nursing Care (per day)",
+          "baseline": 700,
+          "approved": 1225
+        },
+        {
+          "service": "Hospital Bed Occupancy (charge after 48hours)",
+          "baseline": 1000,
+          "approved": 1750
+        }
+      ]
+    },
+    {
+      "name": "Paediatrics",
+      "items": [
+        {
+          "service": "Oxygen Therapy per day",
+          "baseline": 5000,
+          "approved": 8750
+        },
+        {
+          "service": "Incubator care / day (including Phototherapy)",
+          "baseline": 1000,
+          "approved": 2000
+        }
+      ]
+    },
+    {
+      "name": "General Surgery",
+      "items": [
+        {
+          "service": "Management of simple fracture (adult and children) including of reduction of internal fixation",
+          "baseline": 35000,
+          "approved": 70000
+        },
+        {
+          "service": "Appendectomy",
+          "baseline": 20000,
+          "approved": 40000
+        },
+        {
+          "service": "Herniorophy",
+          "baseline": 20000,
+          "approved": 40000
+        },
+        {
+          "service": "Suprapubic Cystostomy",
+          "baseline": 8000,
+          "approved": 16000
+        }
+      ]
+    },
+    {
+      "name": "Gynaecological Surgeries",
+      "items": [
+        {
+          "service": "Caesarean Section (elective/emergency)",
+          "baseline": 40000,
+          "approved": 80000
+        },
+        {
+          "service": "Operative management of Ectopic gestation",
+          "baseline": 40000,
+          "approved": 80000
+        }
+      ]
+    },
+    {
+      "name": "X-Rays",
+      "items": [
+        {
+          "service": "Upper Limb",
+          "baseline": 1500,
+          "approved": 2625
+        },
+        {
+          "service": "Lower Limb",
+          "baseline": 2000,
+          "approved": 3500
+        },
+        {
+          "service": "Thorax",
+          "baseline": 2000,
+          "approved": 3500
+        },
+        {
+          "service": "Vertebrae",
+          "baseline": 2500,
+          "approved": 4375
+        },
+        {
+          "service": "Abdomen",
+          "baseline": 2000,
+          "approved": 3500
+        },
+        {
+          "service": "Skull Series",
+          "baseline": 2500,
+          "approved": 4375
+        }
+      ]
+    },
+    {
+      "name": "Ultrasound Scanning",
+      "items": [
+        {
+          "service": "Obstetric Scan",
+          "baseline": 1000,
+          "approved": 1750
+        },
+        {
+          "service": "Abdominal Scan",
+          "baseline": 1000,
+          "approved": 1750
+        },
+        {
+          "service": "Pelvic Scan",
+          "baseline": 1000,
+          "approved": 1750
+        },
+        {
+          "service": "Breast Scan",
+          "baseline": 1000,
+          "approved": 1750
+        },
+        {
+          "service": "Abdominal Pelvic Scan",
+          "baseline": 1200,
+          "approved": 2100
+        }
+      ]
+    },
+    {
+      "name": "Haematology",
+      "items": [
+        {
+          "service": "FBC",
+          "baseline": 1500,
+          "approved": 2625
+        },
+        {
+          "service": "Hb/PCV - OUT OF STATION",
+          "baseline": 500,
+          "approved": 875
+        },
+        {
+          "service": "Genotype",
+          "baseline": 1200,
+          "approved": 2100
+        },
+        {
+          "service": "Grouping & Cross matching (1Pint) + screening",
+          "baseline": 6500,
+          "approved": 11375
+        }
+      ]
+    },
+    {
+      "name": "Chemical Pathology",
+      "items": [
+        {
+          "service": "Fasting Blood Sugar (FBS) - OUT OF STATION",
+          "baseline": 700,
+          "approved": 1225
+        },
+        {
+          "service": "Random Blood Sugar (RBS) - OUT OF STATION",
+          "baseline": 700,
+          "approved": 1225
+        },
+        {
+          "service": "U/E/CR",
+          "baseline": 1500,
+          "approved": 2650
+        },
+        {
+          "service": "Urinalysis - OUT OF STATION",
+          "baseline": 700,
+          "approved": 1225
+        },
+        {
+          "service": "Serum bilirubin (SB)",
+          "baseline": 1000,
+          "approved": 1750
+        },
+        {
+          "service": "Serum Creatinine",
+          "baseline": 1200,
+          "approved": 2100
+        }
+      ]
+    },
+    {
+      "name": "Bacteriology",
+      "items": [
+        {
+          "service": "HBsAg (Hepatitis “B” Surface Antigen)",
+          "baseline": 1000,
+          "approved": 1750
+        },
+        {
+          "service": "HCV (Hepatitis “C” Virus)",
+          "baseline": 1000,
+          "approved": 1750
+        }
+      ]
+    }
+  ]
+}

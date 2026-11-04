@@ -1,0 +1,367 @@
+// AL-IHSAN platform — public enrollment site + TPA operations console.
+//
+// Primary keys are human-readable strings (CR-1023, CL-3006, ST-01, F1 …)
+// because the console shows them everywhere. They are generated from the
+// `Counter` table (see src/utils/ids.ts). Enum-like columns are plain strings
+// validated with zod at the API edge (see src/models).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Atomic sequences: "CR", "CL", "ST", "FA", "F", "code" (authorisation codes).
+model Counter {
+  key   String @id
+  value Int    @default(0)
+
+  @@map("counters")
+}
+
+// --------------------------------------------------------------------------
+// Facilities
+// --------------------------------------------------------------------------
+
+model Facility {
+  id               String   @id
+  code             String   @unique
+  name             String
+  tier             String // Primary | Secondary | Tertiary
+  lga              String
+  phone            String   @default("—")
+  services         String   @default("—")
+  status           String   @default("Pending") // Accredited | Pending | Suspended
+  address          String?
+  ward             String?
+  primaryCare      Boolean  @default(true)
+  secondaryCare    Boolean  @default(false)
+  // Offered on the public enrollment page as a primary healthcare facility.
+  enrollmentListed Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  // A facility has at most one login.
+  account            User?
+  claims             Claim[]
+  referredRequests   CodeRequest[]       @relation("ReferringFacility")
+  receivingRequests  CodeRequest[]       @relation("ReceivingFacility")
+  enrollees          Enrollee[]
+
+  @@map("facilities")
+}
+
+// --------------------------------------------------------------------------
+// Console users (staff + facility accounts)
+// --------------------------------------------------------------------------
+
+model User {
+  id           String   @id // ST-01 (staff) or FA-01 (facility account)
+  name         String
+  email        String   @unique
+  passwordHash String
+  // administrator | desk-officer | medical-officer | hr-staff | finance-officer | facility
+  role         String
+  title        String
+  dept         String   @default("—")
+  status       String   @default("Active") // Active | On leave | Disabled
+  // Set on facility accounts. Unique: a facility cannot have two logins.
+  facilityId   String?  @unique
+  // Pages granted by an administrator (array of screen ids). null = use the role's defaults.
+  accessOverride Json?
+  createdAt    DateTime @default(now())
+
+  facility Facility? @relation(fields: [facilityId], references: [id])
+
+  createdRequests  CodeRequest[] @relation("RequestCreator")
+  reviewedRequests CodeRequest[] @relation("RequestReviewer")
+  reviewedClaims   Claim[]       @relation("ClaimReviewer")
+
+  @@map("users")
+}
+
+// --------------------------------------------------------------------------
+// KADCHMA plans, enrollees
+// --------------------------------------------------------------------------
+
+model Plan {
+  id       String @id
+  partner  String
+  name     String
+  premium  Int
+
+  benefits PlanBenefit[]
+  enrollees Enrollee[]
+  requests  CodeRequest[]
+
+  @@map("plans")
+}
+
+model PlanBenefit {
+  id     Int    @id @default(autoincrement())
+  planId String
+  name   String
+  tariff Int
+
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("plan_benefits")
+}
+
+// Everyone enrolled in a plan, wherever they came from. `source` says where:
+//   KADCHMA — on the KADCHMA register; the number is administered outside this system
+//             and captured as entered.
+//   Website — signed up themselves through Enroll Now; we issue the numbers and take payment.
+// Website sign-ups carry the whole enrollment form; KADCHMA entries only a few details.
+model Enrollee {
+  id               String    @id // E1 … (KADCHMA) | the enrollment number, e.g. AIH-2026-482913 (Website)
+  source           String    @default("KADCHMA") // KADCHMA | Website
+  name             String
+  firstName        String?
+  middleName       String?
+  lastName         String?
+  kad              String    @unique // KADCHMA number, or the membership number issued to a website sign-up
+  enrollmentNumber String?   @unique // website sign-ups only
+  phone            String
+  email            String?
+  address          String?
+  lga              String?
+  dateOfBirth      String?
+  gender           String?
+  maritalStatus    String?
+  kinName          String?
+  kinRelationship  String?
+  kinPhone         String?
+  // KADCHMA enrollees hold a `plans` plan; website sign-ups hold a `health_plans` plan.
+  planId           String?
+  healthPlanId     String?
+  facilityId       String? // the primary facility chosen at sign-up
+  status           String // Pending Payment | Active | Expiring | Expired (see utils/enrollee-status.ts)
+  enrolledAt       DateTime?
+  expiresAt        DateTime?
+  // Payment is simulated until a gateway is chosen. No card data is ever stored.
+  paymentMethod    String? // card | transfer
+  amount           Int?
+  paymentRef       String?
+  createdAt        DateTime  @default(now())
+
+  plan         Plan?         @relation(fields: [planId], references: [id])
+  healthPlan   HealthPlan?   @relation(fields: [healthPlanId], references: [id])
+  facility     Facility?     @relation(fields: [facilityId], references: [id])
+  transactions Transaction[]
+
+  @@index([source])
+  @@map("enrollees")
+}
+
+// --------------------------------------------------------------------------
+// Public enrollment (the "Enroll Now" flow)
+// --------------------------------------------------------------------------
+
+model HealthPlan {
+  id          String @id // individual | family | corporate
+  name        String
+  price       Int
+  priceLabel  String
+  description String
+  benefits    String[]
+  sortOrder   Int    @default(0)
+
+  enrollees Enrollee[]
+
+  @@map("health_plans")
+}
+
+
+// --------------------------------------------------------------------------
+// Pre-authorisation (code requests)
+// --------------------------------------------------------------------------
+
+model CodeRequest {
+  id             String    @id // CR-1023
+  name           String
+  kad            String
+  phone          String
+  dx             String
+  proc           String
+  planId         String
+  refFacilityId  String
+  recvFacilityId String
+  status         String // Pending | Under Review | Approved | Rejected
+  code           String? // 000469 …
+  reason         String?
+  // Who recorded it and who decided it: the names as they were at the time (they stay
+  // readable if a person is later renamed or removed), plus a link to the account.
+  createdBy      String
+  createdById    String?
+  reviewedBy     String?
+  reviewedById   String?
+  // When a medical officer picked it up, and when they decided: the gap is their review time.
+  reviewStartedAt DateTime?
+  reviewedAt     DateTime?
+  sent           String    @default("Not sent") // Not sent | Sent — manual
+  createdAt      DateTime  @default(now())
+
+  plan         Plan     @relation(fields: [planId], references: [id])
+  refFacility  Facility @relation("ReferringFacility", fields: [refFacilityId], references: [id])
+  recvFacility Facility @relation("ReceivingFacility", fields: [recvFacilityId], references: [id])
+  creator      User?    @relation("RequestCreator", fields: [createdById], references: [id])
+  reviewer     User?    @relation("RequestReviewer", fields: [reviewedById], references: [id])
+
+  @@index([createdById])
+  @@index([reviewedById])
+  @@map("code_requests")
+}
+
+// --------------------------------------------------------------------------
+// Claims
+// --------------------------------------------------------------------------
+
+model Investigation {
+  id        String @id // INV-3-2
+  category  String
+  service   String
+  baseline  Int
+  approved  Int
+  sortOrder Int    @default(0)
+
+  @@map("investigations")
+}
+
+// Sample diagnoses offered as suggestions on the code-request form.
+model Diagnosis {
+  id        String @id // DX-01
+  name      String @unique
+  category  String
+  sortOrder Int    @default(0)
+
+  @@map("diagnoses")
+}
+
+model Claim {
+  id          String    @id // CL-3006
+  name        String
+  kad         String
+  facilityId  String
+  dx          String
+  amount      Int
+  linked      String    @default("—")
+  status      String // Submitted | Under Review | Approved | Rejected | Paid
+  reason      String?
+  submittedBy String
+  reviewedBy  String?
+  reviewedById String?
+  reviewStartedAt DateTime?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  facility       Facility             @relation(fields: [facilityId], references: [id])
+  reviewer       User?                @relation("ClaimReviewer", fields: [reviewedById], references: [id])
+  investigations ClaimInvestigation[]
+  docs           ClaimDocument[]
+
+  @@index([reviewedById])
+
+  @@map("claims")
+}
+
+// One priced line on a claim. name/amount are a snapshot of the price list at
+// submission time (a medical officer may then edit or cancel lines in review).
+model ClaimInvestigation {
+  id              String  @id // CL-3007-INV-1
+  claimId         String
+  investigationId String?
+  name            String
+  amount          Int
+  position        Int     @default(0)
+
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("claim_investigations")
+}
+
+model ClaimDocument {
+  id         String  @id @default(uuid())
+  claimId    String
+  file       String // original file name
+  size       String @default("—")
+  // File name on disk inside UPLOAD_DIR; null when only a name was recorded.
+  storedName String?
+  // "supporting" (submitted with the claim) | "payment-proof" (attached by an administrator once paid).
+  kind       String   @default("supporting")
+  uploadedBy String?
+  uploadedAt DateTime @default(now())
+
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("claim_documents")
+}
+
+// --------------------------------------------------------------------------
+// Money + messaging
+// --------------------------------------------------------------------------
+
+model Transaction {
+  ref    String   @id
+  who    String
+  // The enrollee this payment belongs to, when known (premiums). Other entries match by name.
+  enrolleeId String?
+  type   String // Premium | Premium refund | Facility payment
+  amount Int
+  status String // Pending | Confirmed | Failed
+  date   DateTime @default(now())
+
+  enrollee Enrollee? @relation(fields: [enrolleeId], references: [id])
+
+  @@map("transactions")
+}
+
+model MessageTemplate {
+  id      Int    @id @default(autoincrement())
+  name    String @unique
+  channel String // Email | WhatsApp
+  event   String
+  body    String
+
+  @@map("message_templates")
+}
+
+model Delivery {
+  id       Int      @id @default(autoincrement())
+  time     DateTime @default(now())
+  to       String
+  channel  String
+  template String
+  status   String // Delivered | Sent | Sent — manual | Queued | Failed
+
+  @@map("deliveries")
+}
+
+// --------------------------------------------------------------------------
+// Audit trail
+// --------------------------------------------------------------------------
+
+// Append-only record of what happened in the system and who did it. The actor's
+// name and role are copied in, so the trail still reads correctly after a user
+// is renamed or removed. Nothing in the API updates or deletes these rows.
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  at         DateTime @default(now())
+  actorId    String? // null for the public website and for failed sign-ins
+  actorName  String
+  actorRole  String?
+  action     String // claim.approve, user.disable, auth.login_failed …
+  entityType String // claim | request | user | access | facility | investigation | transaction | enrollment | auth | report | audit
+  entityId   String?
+  summary    String
+  metadata   Json?
+  ip         String?
+
+  @@index([at])
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@map("audit_logs")
+}
